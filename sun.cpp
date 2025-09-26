@@ -8,6 +8,7 @@ using namespace std;
 
 const int width = 100, height = 60;
 const int area = width * height;
+char buffer[width * height];
 int bgASCIICode = ' ';
 
 // formatting colors
