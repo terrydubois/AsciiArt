@@ -3,13 +3,15 @@
 #include <cmath>
 #include <chrono>
 #include <thread>
+#include <vector>
 
 using namespace std;
 
 const int width = 100, height = 60;
 const int area = width * height;
-char buffer[width * height];
+char buffer[area];
 int bgASCIICode = ' ';
+float rayTwist = 0;
 
 // formatting colors
 // 30 - black
@@ -23,8 +25,17 @@ int bgASCIICode = ' ';
 // 39 - default
 // 0 - reset all formatting
 
-int setChar(int x, int y, char ch) {
-    return buffer[(y * width) + x] = ch;
+// set char in buffer
+void setChar(int x, int y, char ch) {
+    int idx = (y * width) + x;
+    if (idx < area) {
+        buffer[idx] = ch;
+    }
+}
+
+// convert degrees to radians
+float degToRad(float deg) {
+    return deg * (M_PI / 180.0);
 }
 
 void drawCircle(int x, int y, int radius, char ch) {
@@ -54,6 +65,41 @@ void drawLine(int x1, int y1, int x2, int y2, char ch) {
 }
 
 
+class Raindrop {
+
+public:
+
+    // Raindrop will have x1 and y1, and a tail that extends
+    // backwards with length len
+    float x, y;
+    float xOrigin, yOrigin;
+    float len, spd;
+
+    // constructor
+    Raindrop(float _x, float _y, float _len, float _spd)
+        : x(_x), y(_y), xOrigin(_x), yOrigin(_y),
+        len(_len), spd(_spd) {}
+
+    void updatePos() {
+        x -= spd;
+        y += spd;
+
+        // reset position when going off-screen
+        if (y - len > height) {
+            x = xOrigin;
+            y = yOrigin;
+        }
+    }
+
+    void drawSelf() {
+        for (int i = 0; i < len; i++) {
+            setChar(x + i, y - i, '/');
+        }
+    }
+};
+
+
+
 
 int main() {
 
@@ -61,7 +107,16 @@ int main() {
     cout << "\033[2J";
     cout << "\033[?25l";
 
-    float rayTwist = 0;
+    // create raindrops
+    vector<Raindrop*> drops = {
+        new Raindrop{65, 40, 3, 1},
+        new Raindrop{75, 36, 4, 1},
+        new Raindrop{78, 38, 5, 1},
+        new Raindrop{82, 38, 3, 1},
+        new Raindrop{88, 36, 3, 1},
+        new Raindrop{90, 40, 4, 1},
+        new Raindrop{93, 39, 3, 1}
+    };
 
     while (true) {
 
@@ -81,13 +136,18 @@ int main() {
         float rayLen = sunRadius * 1.5;
         float plusDegrees = sin(rayTwist / 2) * 20;
         for (int i = 0; i < 8; i++) {
-            float degrees = ((360 / 8) * i) + plusDegrees;
-            float radians = degrees * (M_PI / 180.0);
+            float radians = degToRad(((360 / 8) * i) + plusDegrees);
             float rayX1 = sunX + 1;
             float rayY1 = sunY + 1;
             float rayX2 = rayX1 + rayLen * cos(radians);
             float rayY2 = rayY1 + rayLen * sin(radians);
-            drawLine((int) rayX1, (int) rayY1, (int) rayX2, (int) rayY2, ':');
+            drawLine(rayX1, rayY1, rayX2, rayY2, 'O');
+        }
+
+        // draw raindrops
+        for (Raindrop* drop : drops) {
+            drop->updatePos();
+            drop->drawSelf();
         }
 
         // draw cloud
@@ -112,6 +172,9 @@ int main() {
                     break;
                 case '@':
                     cout << "\033[33m"; // yellow
+                    break;
+                case '/':
+                    cout << "\033[36m"; // cyan
                     break;
                 default:
                     cout << "\033[0m"; // reset
